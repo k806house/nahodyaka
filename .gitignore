@@ -1,6 +1,7 @@
 photos
 
 .vscode/*
-__pycache__/*
+*__pycache__*
 *.DS_Store*
 .env
+nahodyaka.egg-info/*

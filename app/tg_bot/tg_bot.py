@@ -1,14 +1,20 @@
 import logging
 import os
-from dotenv import load_dotenv
-
 from enum import Enum
+from shutil import SameFileError
 
-from telegram import InputMediaPhoto, KeyboardButton, ReplyKeyboardMarkup
+from app.engine import Engine
+from app.storage import Metadata
+from dotenv import load_dotenv
+from telegram import InputMediaPhoto, ReplyKeyboardMarkup
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
 
-from config import TG_FOUND_PET, TG_HELLO, TG_LOST_PET, TG_PHOTO_PATH, TG_SEND_ME, TG_THANK
-from engine import Engine
+TG_HELLO = "Здарова братан, чем могу помочь?"
+TG_THANK = "От души, ждем чудес!"
+TG_LOST_PET = "Я потерял своего дружочка"
+TG_FOUND_PET = "Я нашел чужого дружочка"
+TG_SEND_ME = "Пришли фотографию питомца в анфас"
+TG_PHOTO_PATH = "./photos"
 
 
 class Action(Enum):
@@ -34,20 +40,23 @@ def msg(update, context):
     else:
         return
 
-    context.bot.send_message(chat_id=update.effective_chat.id,
-                             text=TG_SEND_ME)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=TG_SEND_ME)
 
 
 def img(update, context):
     tg_file = update.message.photo[-1].get_file()
-    path = os.path.join(TG_PHOTO_PATH, os.path.basename(tg_file.file_path))
-    file = tg_file.download(custom_path=path)
+    filename = os.path.join(TG_PHOTO_PATH, os.path.basename(tg_file.file_path))
+    try:
+        tg_file.download(custom_path=filename)
+    except SameFileError:
+        pass
 
     chat_id = update.effective_chat.id
+    meta = Metadata(filename, chat_id, update.message.message_id, {})
     if chat_to_action[chat_id] == Action.FIND:
-        __find(update, context, file)
+        __find(update, context, meta)
     elif chat_to_action[chat_id] == Action.ADD:
-        __add(update, context, file)
+        __add(update, context, meta)
 
 
 def start(update, context):
@@ -62,23 +71,26 @@ def start(update, context):
                              text=TG_HELLO)
 
 
-def __add(update, context, file):
-    engine.add(file)
-    context.bot.send_message(chat_id=update.effective_chat.id,
-                             text=TG_THANK)
+def __add(update, context, meta):
+    engine.add(meta)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=TG_THANK)
 
 
-def __find(update, context, file):
-    k_nbrs = engine.search(file)
+def __find(update, context, meta):
+    k_nbrs = engine.search(meta)
 
-    photos_bin = []
-    caption = ""
-    for i, (dist, file) in enumerate(k_nbrs):
-        caption += f"{i+1}. L2 distance = [{dist:.3f}]\n"
-        with open(file, 'rb') as f:
-            photos_bin.append((f.read(), dist))
+    matches = []
+    for i, (dist, meta) in enumerate(k_nbrs):
+        with open(meta.filename, 'rb') as f:
+            matches.append((f.read(), meta.chat_id, meta.msg_id, dist))
 
-    to_send = [InputMediaPhoto(p, caption=f"L2 distance={dist}") for p, dist in photos_bin]
+    to_send = [
+        InputMediaPhoto(
+            p,
+            caption=
+            f"chat_id=[{chat_id}], msg_id=[{msg_id}], L2 distance=[{dist}]")
+        for p, chat_id, msg_id, dist in matches
+    ]
 
     context.bot.send_media_group(chat_id=update.effective_chat.id,
                                  media=to_send)
@@ -87,8 +99,7 @@ def __find(update, context, file):
 if __name__ == "__main__":
     load_dotenv()
 
-    updater = Updater(token=os.environ["TOKEN"],
-                      use_context=True)
+    updater = Updater(token=os.environ["TOKEN"], use_context=True)
 
     dispatcher = updater.dispatcher
 

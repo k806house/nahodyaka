@@ -19,16 +19,17 @@ class Engine:
         self.storage_client = StorageClient(STORAGE_URL)
 
     def add(self, meta):
-        img = Image.open(meta.filename).resize(IMG_SIZE)
-        arr = np.asarray(img)[np.newaxis, ...] / 255
-        emb = self.model.predict(arr)
+        emb = self.__get_emb(meta.filename)
         emb_id = self.storage_client.emb_add(emb)
         self.storage_client.meta_add(emb_id, meta)
 
     def search(self, meta, k=10):
-        img = Image.open(meta.filename).resize(IMG_SIZE)
-        arr = np.asarray(img)[np.newaxis, ...] / 255
-        emb = self.model.predict(arr)
+        emb = self.__get_emb(meta.filename)
         k_nbrs = self.storage_client.emb_k_nbrs(emb, k)
         return [(dist, self.storage_client.meta_search(emb_id))
                 for dist, emb_id in k_nbrs]
+
+    def __get_emb(self, filename):
+        img = Image.open(filename).resize(IMG_SIZE)
+        arr = np.asarray(img)[np.newaxis, ...] / 255
+        return self.model.predict(arr)

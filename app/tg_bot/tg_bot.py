@@ -87,7 +87,7 @@ def __find(update, context, meta):
 
     to_send = [
         InputMediaPhoto(
-            p, caption=f"User: @{username}, L2 distance: {dist}")
+            p, caption=f"User: @{username}, L2 distance: {dist:.2f}")
         for p, username, dist in matches
     ]
 

@@ -52,7 +52,8 @@ def img(update, context):
         pass
 
     chat_id = update.effective_chat.id
-    meta = Metadata(filename, chat_id, update.message.message_id, {})
+    meta = Metadata(filename, chat_id, update.message.message_id,
+                    {"username": update.effective_chat.username})
     if chat_to_action[chat_id] == Action.FIND:
         __find(update, context, meta)
     elif chat_to_action[chat_id] == Action.ADD:
@@ -82,14 +83,12 @@ def __find(update, context, meta):
     matches = []
     for i, (dist, meta) in enumerate(k_nbrs):
         with open(meta.filename, 'rb') as f:
-            matches.append((f.read(), meta.chat_id, meta.msg_id, dist))
+            matches.append((f.read(), meta.other["username"], dist))
 
     to_send = [
         InputMediaPhoto(
-            p,
-            caption=
-            f"chat_id=[{chat_id}], msg_id=[{msg_id}], L2 distance=[{dist}]")
-        for p, chat_id, msg_id, dist in matches
+            p, caption=f"User: @{username}, L2 distance: {dist}")
+        for p, username, dist in matches
     ]
 
     context.bot.send_media_group(chat_id=update.effective_chat.id,

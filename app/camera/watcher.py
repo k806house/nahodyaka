@@ -1,20 +1,21 @@
-import sys
-
 import cv2
 import torch
 
 model = torch.hub.load('ultralytics/yolov5',
                        'custom',
                        path='models/yolov5s_987.pt')
-# model = torch.hub.load('ultralytics/yolov5',
-#                        'yolov5s',
-#                        pretrained=True)
+# # model = torch.hub.load('ultralytics/yolov5',
+# #                        'yolov5s',
+# #                        pretrained=True)
 model.eval()
 for p in model.parameters():
     p.requires_grad = False
 
-video_path = sys.argv[1]
-cap = cv2.VideoCapture(video_path)
+cap = cv2.VideoCapture(
+    'udpsrc port=5000 caps = "application/x-rtp, media=(string)video, \
+        clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96" \
+            ! rtph264depay ! decodebin ! videoconvert ! appsink',
+    cv2.CAP_GSTREAMER)
 
 while cap.isOpened():
     ret, img = cap.read()
@@ -30,6 +31,9 @@ while cap.isOpened():
 
     for i, d in enumerate(dets.xyxy[0]):
         x1, y1, x2, y2, conf, label = d
+        if conf < 0.5:
+            continue
+
         x1 = int(x1)
         y1 = int(y1)
         x2 = int(x2)

@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, request
 
 from embedding_storage import EmbeddingStorage
@@ -47,4 +49,4 @@ def meta_search():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=int(os.environ["PORT"]))

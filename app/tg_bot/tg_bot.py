@@ -1,9 +1,10 @@
 import logging
 import os
+import zipfile
 from enum import Enum
 from shutil import SameFileError
 
-from app.engine import Engine
+from app.engine import Action, Engine
 from app.storage import Metadata
 from dotenv import load_dotenv
 from telegram import InputMediaPhoto, ReplyKeyboardMarkup
@@ -11,16 +12,13 @@ from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
 
 TG_HELLO = "Здарова братан, чем могу помочь?"
 TG_THANK = "От души, ждем чудес!"
+TG_SUCCESS_ADD = "Питомец успешно добавлен в базу"
 TG_LOST_PET = "Я потерял своего дружочка"
 TG_FOUND_PET = "Я нашел чужого дружочка"
-TG_SEND_ME = "Пришли фотографию питомца в анфас"
+TG_SEND_ME = "Пришли мордочку питомца в анфас"
+TG_NO_MATCHES = "Совпадений не найдено :("
+TG_CHOOSE_ACTION = "Сначала выбери действие"
 TG_PHOTO_PATH = "./photos"
-
-
-class Action(Enum):
-    ADD = 0
-    FIND = 1
-
 
 global chat_to_action
 chat_to_action = {}
@@ -34,9 +32,9 @@ def msg(update, context):
     chat_id = update.effective_chat.id
 
     if text == TG_LOST_PET:
-        chat_to_action[chat_id] = Action.FIND
+        chat_to_action[chat_id] = Action.LOST
     elif text == TG_FOUND_PET:
-        chat_to_action[chat_id] = Action.ADD
+        chat_to_action[chat_id] = Action.FOUND
     else:
         return
 
@@ -44,6 +42,12 @@ def msg(update, context):
 
 
 def img(update, context):
+    chat_id = update.effective_chat.id
+    if chat_id not in chat_to_action:
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                 text=TG_CHOOSE_ACTION)
+        return
+
     tg_file = update.message.photo[-1].get_file()
     filename = os.path.join(TG_PHOTO_PATH, os.path.basename(tg_file.file_path))
     try:
@@ -51,13 +55,41 @@ def img(update, context):
     except SameFileError:
         pass
 
-    chat_id = update.effective_chat.id
     meta = Metadata(filename, chat_id, update.message.message_id,
                     {"username": update.effective_chat.username})
-    if chat_to_action[chat_id] == Action.FIND:
-        __find(update, context, meta)
-    elif chat_to_action[chat_id] == Action.ADD:
-        __add(update, context, meta)
+
+    action = chat_to_action[chat_id]
+    __find(update, context, meta, action)
+    __add(update, context, meta, action)
+
+
+def doc(update, context):
+    chat_id = update.effective_chat.id
+    if chat_id not in chat_to_action:
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                 text=TG_CHOOSE_ACTION)
+        return
+
+    tg_file = update.message.document.get_file()
+    basename = os.path.basename(tg_file.file_path)
+    if basename.split('.')[1] != 'zip':
+        return
+
+    action = chat_to_action[chat_id]
+    filename = os.path.join(TG_PHOTO_PATH, basename)
+    try:
+        tg_file.download(custom_path=filename)
+        with zipfile.ZipFile(filename, "r") as zip_ref:
+            zip_ref.extractall(TG_PHOTO_PATH)
+            for info in zip_ref.filelist:
+                meta = Metadata(os.path.join(TG_PHOTO_PATH, info.filename),
+                                chat_id, update.message.message_id,
+                                {"username": update.effective_chat.username})
+                __add(update, context, meta, action, True)
+    except SameFileError:
+        pass
+
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Готово")
 
 
 def start(update, context):
@@ -72,22 +104,30 @@ def start(update, context):
                              text=TG_HELLO)
 
 
-def __add(update, context, meta):
-    engine.add(meta)
-    context.bot.send_message(chat_id=update.effective_chat.id, text=TG_THANK)
+def __add(update, context, meta, action, silent=False):
+    engine.add(meta, action)
+
+    if not silent:
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                 text=TG_SUCCESS_ADD)
 
 
-def __find(update, context, meta):
-    k_nbrs = engine.search(meta)
+def __find(update, context, meta, action):
+    k_nbrs = engine.search(meta, action)
 
     matches = []
     for i, (dist, meta) in enumerate(k_nbrs):
         with open(meta.filename, 'rb') as f:
             matches.append((f.read(), meta.other["username"], dist))
 
+    if not matches:
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                 text=TG_NO_MATCHES)
+        return
+
     to_send = [
-        InputMediaPhoto(
-            p, caption=f"User: @{username}, L2 distance: {dist:.2f}")
+        InputMediaPhoto(p,
+                        caption=f"User: @{username}, L2 distance: {dist:.2f}")
         for p, username, dist in matches
     ]
 
@@ -114,5 +154,8 @@ if __name__ == "__main__":
 
     img_handler = MessageHandler(Filters.photo, img)
     dispatcher.add_handler(img_handler)
+
+    doc_handler = MessageHandler(Filters.document, doc)
+    dispatcher.add_handler(doc_handler)
 
     updater.start_polling()

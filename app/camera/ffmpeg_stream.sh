@@ -1,0 +1,1 @@
+ffmpeg -re -f avfoundation -framerate 15 -i "0" -tune zerolatency -b 900k -an -f mpegts udp://127.0.0.1:5000

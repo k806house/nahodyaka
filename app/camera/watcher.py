@@ -1,22 +1,22 @@
+import os
+import sys
+
 import cv2
 import torch
 
 model = torch.hub.load('ultralytics/yolov5',
-                       'custom', force_reload=True,
-                       path='models/yolov5s_955_scratch.pt')
+                       'custom',
+                       force_reload=True,
+                       path='models/yolov5s_805_scratch.pt')
 
-# model = torch.hub.load('ultralytics/yolov5',
-#                        'yolov5s',
-#                        pretrained=True)
 model.eval()
 for p in model.parameters():
     p.requires_grad = False
 
-cap = cv2.VideoCapture(
-    'udpsrc port=5000 caps = "application/x-rtp, media=(string)video, \
-        clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96" \
-            ! rtph264depay ! decodebin ! videoconvert ! appsink',
-    cv2.CAP_GSTREAMER)
+# os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "protocol_whitelist;file,rtp,udp"
+
+cap_from = sys.argv[1] if len(sys.argv) > 1 else 0
+cap = cv2.VideoCapture(cap_from)
 
 while cap.isOpened():
     ret, img = cap.read()

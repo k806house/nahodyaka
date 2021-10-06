@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  storage_found:
+    build:
+      context: .
+      target: storage
+    restart: always
+    environment:
+      PORT: 5000
+    ports:
+      - "5000:5000"
+
+  storage_lost:
+    build:
+      context: .
+      target: storage
+    restart: always
+    environment:
+      PORT: 5001
+    ports:
+      - "5001:5001"
+
+  storage_found_watcher:
+    build:
+      context: .
+      target: storage
+    restart: always
+    environment:
+      PORT: 5002
+    ports:
+      - "5002:5002"

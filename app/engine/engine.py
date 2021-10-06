@@ -1,4 +1,5 @@
 from enum import Flag
+from functools import lru_cache
 
 import numpy as np
 import tensorflow as tf
@@ -17,15 +18,15 @@ class Action(Flag):
 
 
 class Engine:
-    def __init__(self):
+    def __init__(self, found_url=FOUND_STORAGE_URL, lost_url=LOST_STORAGE_URL):
         self.model = tf.keras.models.load_model(EMBEDDING_MODEL_PATH,
                                                 custom_objects={
                                                     "triplet": None,
                                                     "triplet_acc": None
                                                 })
 
-        self.found_storage_client = StorageClient(FOUND_STORAGE_URL)
-        self.lost_storage_client = StorageClient(LOST_STORAGE_URL)
+        self.found_storage_client = StorageClient(found_url)
+        self.lost_storage_client = StorageClient(lost_url)
 
     def add(self, meta, act):
         emb = self.__get_emb(meta.filename)
@@ -39,6 +40,7 @@ class Engine:
         k_nbrs = client.emb_k_nbrs(emb, k)
         return [(dist, client.meta_search(emb_id)) for dist, emb_id in k_nbrs]
 
+    @lru_cache(maxsize=None)
     def __get_emb(self, filename):
         img = Image.open(filename).resize(IMG_SIZE)
         arr = np.asarray(img)[np.newaxis, ...] / 255

@@ -1,22 +1,13 @@
 # nahodyaka
 
-## Setup
-```
-$ pip install -r requirement.txt
-```
-
 ## Usage
-Storage server:
+Поднять все кроме watcher (его надо поднимать руками, потому что ебучий макбук не дает
+доступ к вебке из контейнера):
 ```
-$ python app/storage/server.py
-```
-
-Telegram bot:
-```
-$ python app/tg_bot/tg_bot.py
+$ docker-compose up
 ```
 
-Video pipeline:
+Watcher:
 ```
-$ python video.py <file>
+$ python3 app/camera/watcher.py
 ```

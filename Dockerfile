@@ -30,3 +30,25 @@ RUN pip3 install flask numpy
 COPY app app
 
 ENTRYPOINT [ "python3", "/workdir/app/storage/server.py" ]
+
+
+FROM python:3.7-slim as telegram-bot
+
+WORKDIR /workdir
+
+RUN pip3 install \
+    tensorflow==2.6.0
+
+RUN pip3 install \
+    python-telegram-bot \
+    python-dotenv \
+    Pillow
+
+COPY app app
+COPY models models
+COPY .env .env
+COPY setup.py setup.py
+
+RUN pip3 install .
+
+ENTRYPOINT [ "python3", "/workdir/app/tg_bot/tg_bot.py" ]

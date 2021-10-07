@@ -1,3 +1,4 @@
+import os
 from enum import Flag
 from functools import lru_cache
 
@@ -6,9 +7,6 @@ import tensorflow as tf
 from app.storage import StorageClient
 from PIL import Image
 
-EMBEDDING_MODEL_PATH = "./models/facenet150.h5"
-FOUND_STORAGE_URL = "http://localhost:5000"
-LOST_STORAGE_URL = "http://localhost:5001"
 IMG_SIZE = (224, 224)
 
 
@@ -18,12 +16,13 @@ class Action(Flag):
 
 
 class Engine:
-    def __init__(self, found_url=FOUND_STORAGE_URL, lost_url=LOST_STORAGE_URL):
-        self.model = tf.keras.models.load_model(EMBEDDING_MODEL_PATH,
-                                                custom_objects={
-                                                    "triplet": None,
-                                                    "triplet_acc": None
-                                                })
+    def __init__(self, found_url, lost_url):
+        self.model = tf.keras.models.load_model(
+            os.environ["EMBEDDING_MODEL_PATH"],
+            custom_objects={
+                "triplet": None,
+                "triplet_acc": None
+            })
 
         self.found_storage_client = StorageClient(found_url)
         self.lost_storage_client = StorageClient(lost_url)

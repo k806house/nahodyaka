@@ -24,7 +24,8 @@ global chat_to_action
 chat_to_action = {}
 
 global engine
-engine = Engine()
+engine = Engine(os.environ["FOUND_STORAGE_URL"],
+                os.environ["LOST_STORAGE_URL"])
 
 
 def msg(update, context):
@@ -136,6 +137,9 @@ def __find(update, context, meta, action):
 
 
 if __name__ == "__main__":
+    if not os.path.exists(TG_PHOTO_PATH):
+        os.makedirs(TG_PHOTO_PATH)
+
     load_dotenv()
 
     updater = Updater(token=os.environ["TOKEN"], use_context=True)

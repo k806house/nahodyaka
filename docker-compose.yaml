@@ -30,3 +30,16 @@ services:
       PORT: 5002
     ports:
       - "5002:5002"
+
+  telegram-bot:
+    depends_on:
+      - storage_found
+      - storage_lost
+      - storage_found_watcher
+    build:
+      context: .
+      target: telegram-bot
+    environment:
+      FOUND_STORAGE_URL: "http://storage_found:5000"
+      LOST_STORAGE_URL: "http://storage_lost:5001"
+      EMBEDDING_MODEL_PATH: "models/facenet150.h5"

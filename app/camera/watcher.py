@@ -12,7 +12,7 @@ from PIL import Image
 class Watcher:
     def __init__(self):
         self.detection_model = self.__init_detection_model()
-        self.engine = Engine()
+        self.engine = Engine("http://localhost:5002", "http://localhost:5000")
         self.phashes = []
 
     def run(self, cap_from):

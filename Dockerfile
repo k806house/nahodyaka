@@ -40,9 +40,13 @@ RUN pip3 install \
     tensorflow==2.6.0
 
 RUN pip3 install \
+    keras==2.6.0
+
+RUN pip3 install \
     python-telegram-bot \
     python-dotenv \
-    Pillow
+    Pillow \
+    numpy
 
 COPY app app
 COPY models models
